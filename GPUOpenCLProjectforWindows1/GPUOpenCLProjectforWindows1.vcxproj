@@ -186,14 +186,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="GPUOpenCLProjectforWindows.cpp" />
-    <ClCompile Include="Sphere.cpp" />
-    <ClCompile Include="SphereManager.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="GPUOpenCLProjectforWindows.h" />
-    <ClInclude Include="Sphere.h" />
-    <ClInclude Include="SphereManager.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <ItemGroup>

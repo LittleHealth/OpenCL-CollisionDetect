@@ -1,4 +1,4 @@
-ï»¿#include <GL\glut.h>
+#include <GL\glut.h>
 #include <gl\freeglut.h>
 #include <gl\freeglut_ext.h>
 #include <gl\freeglut_std.h>
@@ -10,8 +10,6 @@ using namespace std;
 const GLfloat Pi = 3.1415926536f;
 
 void initSpheres(void);
-void updateSpheres(double interval);
-void collideDetect(int index);
 void myReshape(GLsizei w, GLsizei h);
 void display(void);
 //void updateView();
@@ -19,24 +17,23 @@ void timer(int id);
 
 double tx[N], ty[N], tz[N], r[N], vx[N], vy[N], vz[N], m[N], red[N], green[N], blue[N];
 
-//ä¸»å‡½æ•°
+//Ö÷º¯Êı
 int main(int argc, char* argv[])
 {
 	glutInit(&argc, argv);
-	//åˆå§‹åŒ–OPENGLæ˜¾ç¤ºæ–¹å¼
+	//³õÊ¼»¯OPENGLÏÔÊ¾·½Ê½
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
-	//è®¾å®šOPENGLçª—å£ä½ç½®å’Œå¤§å°
+	//Éè¶¨OPENGL´°¿ÚÎ»ÖÃºÍ´óĞ¡
 	glutInitWindowSize(800, 800);
 	glutInitWindowPosition(100, 100);
-	//æ‰“å¼€çª—å£
+	//´ò¿ª´°¿Ú
 	glutCreateWindow("opengl3d");
 	glEnable(GL_DEPTH_TEST);
 
-	initSpheres();
 	glutTimerFunc(10, timer, 1);
-	//è®¾å®šçª—å£å¤§å°å˜åŒ–çš„å›è°ƒå‡½æ•°
+	//Éè¶¨´°¿Ú´óĞ¡±ä»¯µÄ»Øµ÷º¯Êı
 	glutReshapeFunc(myReshape);
-	//å¼€å§‹OPENGLçš„å¾ªç¯
+	//¿ªÊ¼OPENGLµÄÑ­»·
 	glutDisplayFunc(display);
 	glutMainLoop();
 
@@ -44,13 +41,13 @@ int main(int argc, char* argv[])
 }
 
 void timer(int id) {
-	//é‡æ–°è®¡ç®—é€Ÿåº¦ä½ç½®
+	//ÖØĞÂ¼ÆËãËÙ¶ÈÎ»ÖÃ
 	updateSpheres(0.5);
 	glutPostRedisplay();
 	glutTimerFunc(10, timer, 1);
 }
 
-void myReshape(GLsizei w, GLsizei h)//è®¾å®šçª—å£å¤§å°å˜åŒ–çš„å›è°ƒå‡½æ•°
+void myReshape(GLsizei w, GLsizei h)//Éè¶¨´°¿Ú´óĞ¡±ä»¯µÄ»Øµ÷º¯Êı
 {
 	glViewport(0, 0, w, h);
 	glMatrixMode(GL_PROJECTION);
@@ -78,12 +75,12 @@ void drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat r, GLubyte red, GLubyte
 
 void display(void)
 {
-	//æ¸…é™¤é¢œè‰²å’Œæ·±åº¦ç¼“å­˜
+	//Çå³ıÑÕÉ«ºÍÉî¶È»º´æ
 	glClearColor(0.0, 0.0, 0.0, 0.0);
 	glClearDepth(2);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	//è§†è§’çš„å˜åŒ–
+	//ÊÓ½ÇµÄ±ä»¯
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	gluLookAt(gl_view_x, gl_view_y, gl_view_z, gl_target_x, gl_target_y, gl_target_z, 0, 1, 0);
@@ -109,14 +106,14 @@ void initSpheres(void)
 		int y_i = index % line;
 		index = index / line;
 		int z_i = index;
-		tx[i] = x_i * 0.3 - 0.001 * y_i - 0.001 * z_i - 0.61;
-		ty[i] = y_i * 0.3 - 0.001 * z_i - 0.001 * x_i - 0.61;
-		tz[i] = z_i * 0.3 - 0.001 * x_i - 0.001 * y_i - 0.61;
+		tx[i] = (x_i - 2) * 0.3 - 0.001 * (y_i - 5) - 0.001 * (z_i - 5);
+		ty[i] = (y_i - 2) * 0.3 - 0.001 * (z_i - 5) - 0.001 * (x_i - 5);
+		tz[i] = (z_i - 2) * 0.3 - 0.001 * (x_i - 5) - 0.001 * (y_i - 5);
 		r[i] = i % 7 == 0 ? 0.15 : 0.1;
 		m[i] = i % 5 == 0 ? 2 : 1;
-		red[i] = (i * COLOR) % 255;
-		green[i] = ((i+1) * COLOR) % 255;
-		blue[i] = ((i+2) * COLOR ) % 255;
+		red[i] = (i % line) * COLOR;
+		green[i] = (i + 1 % line) * COLOR;
+		blue[i] = (i + 2 % line) * COLOR;
 		if (i % 11 == 0) {
 			vx[i] = 0.003; vy[i] = -0.01; vz[i] = 0.002;
 		}
@@ -178,7 +175,7 @@ void collideDetect(int index) {
 
 			double factor = -0.005 * (collideDist - dist);
 			for (int j = 0; j < 3; j++) {
-				force[j] += factor * norm[j] + 0.002 * dv[j] + 0.001 * tanv[j];
+				force[i] += factor * norm[i] + 0.002 * dv[i] + 0.001 * tanv[i];
 			}
 		}
 	}
