@@ -29,8 +29,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{4b3cd8f8-29e7-40ca-89a5-db49a44d081e}</ProjectGuid>
-    <RootNamespace>GPUOpenCLProjectforWindows1</RootNamespace>
+    <ProjectGuid>{ec3c2300-9ed9-41f0-a316-3cd7f150345a}</ProjectGuid>
+    <RootNamespace>OpenCL_CollisionDetect</RootNamespace>
   </PropertyGroup>
   <!-- Workaround for VS Template engine (latest Windows SDK selection) -->
   <PropertyGroup Condition="'$(WindowsTargetPlatformVersion)'==''">
@@ -189,7 +189,6 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="config.h" />
     <ClInclude Include="GPUOpenCLProjectforWindows.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
