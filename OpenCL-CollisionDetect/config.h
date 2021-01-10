@@ -14,10 +14,11 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 
 
-#define ARRAY_SIZE 125
+// 设置小球的数量！！！最重要的参数
+#define ARRAY_SIZE 64
 const int N = ARRAY_SIZE;
 const int num = N;
-const int line = 5;
+const int line = 4;
 #define GAP_TIME 10
 
 const double G = -0.0003;

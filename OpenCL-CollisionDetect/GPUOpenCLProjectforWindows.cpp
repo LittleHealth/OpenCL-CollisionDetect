@@ -11,172 +11,24 @@
 #include <gl\freeglut.h>
 #include <gl\freeglut_ext.h>
 #include <gl\freeglut_std.h>
+#include <time.h>
 
 #include "CL\cl.h"
 #include "utils.h"
 #include "config.h"
+#include "mOpenCL.h"
 
 using namespace std;
-//const GLfloat Pi = 3.1415926536f;
 
+// 定义全局变量，同时也因此才将opencl和opengl的代码进行合并为一个cpp文件
 float tx[N], ty[N], tz[N], r[N], vx[N], vy[N], vz[N], m[N], red[N], green[N], blue[N]; 
 float ntx[N], nty[N], ntz[N],nvx[N], nvy[N], nvz[N];
 
 
-/* Convenient container for all OpenCL specific objects used in the sample
- *
- * It consists of two parts:
- *   - regular OpenCL objects which are used in almost each normal OpenCL applications
- *   - several OpenCL objects that are specific for this particular sample
- *
- * You collect all these objects in one structure for utility purposes
- * only, there is no OpenCL specific here: just to avoid global variables
- * and make passing all these arguments in functions easier.
- */
-struct mOpenCL
-{
-    mOpenCL();
-    ~mOpenCL();
 
-    // Regular OpenCL objects:
-    cl_context       context;           // hold the context handler
-    cl_device_id     device;            // hold the selected device handler
-    cl_command_queue commandQueue;      // hold the commands-queue handler
-    cl_program       program;           // hold the program handler
-    cl_kernel        updateSphere;      // hold the kernel handler
-    float            platformVersion;   // hold the OpenCL platform version (default 1.2)
-    float            deviceVersion;     // hold the OpenCL device version (default. 1.2)
-    float            compilerVersion;   // hold the device OpenCL C version (default. 1.2)
-    
-    // Objects that are specific for algorithm implemented in this sample
-    cl_mem           tx;
-    cl_mem           ty;
-    cl_mem           tz;
-    cl_mem           r;
-    cl_mem           vx;
-    cl_mem           vy;
-    cl_mem           vz;
-    cl_mem           m;
+mOpenCL ocl; // 创建opencl进行存储变量
 
-    cl_mem           ntx;
-    cl_mem           nty;
-    cl_mem           ntz;
-    cl_mem           nvx;
-    cl_mem           nvy;
-    cl_mem           nvz;
-
-    size_t           num;
-};
-
-mOpenCL::mOpenCL():
-        context(NULL),
-        device(NULL),
-        commandQueue(NULL),
-        program(NULL),
-        updateSphere(NULL),
-        platformVersion(OPENCL_VERSION_1_2),
-        deviceVersion(OPENCL_VERSION_1_2),
-        compilerVersion(OPENCL_VERSION_1_2)
-{
-    tx = ty = tz = r = m = vx = vy = vz = NULL;
-    num = 125;
-    ntx = nty = ntz = nvx = nvy = nvz = NULL;
-}
-
-/*
- * destructor - called only once
- * Release all OpenCL objects
- * This is a regular sequence of calls to deallocate all created OpenCL resources in bootstrapOpenCL.
- *
- * You may want to call these deallocation procedures in the middle of your application execution
- * (not at the end) if you don't further need OpenCL runtime.
- * You may want to do that in order to free some memory, for example,
- * or recreate OpenCL objects with different parameters.
- *
- */
-mOpenCL::~mOpenCL()
-{
-    cl_int err = CL_SUCCESS;
-    if (updateSphere)
-    {
-        err = clReleaseKernel(updateSphere);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseKernel returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (program)
-    {
-        err = clReleaseProgram(program);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseProgram returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (tx)
-    {
-        err = clReleaseMemObject(tx);
-        err = clReleaseMemObject(ty);
-        err = clReleaseMemObject(tz);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseMemObject returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (vx)
-    {
-        err = clReleaseMemObject(vx);
-        err = clReleaseMemObject(vy);
-        err = clReleaseMemObject(vz);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseMemObject returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (m)
-    {
-        err = clReleaseMemObject(m);
-        err = clReleaseMemObject(r);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseMemObject returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (commandQueue)
-    {
-        err = clReleaseCommandQueue(commandQueue);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseCommandQueue returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (device)
-    {
-        err = clReleaseDevice(device);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseDevice returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-    if (context)
-    {
-        err = clReleaseContext(context);
-        if (CL_SUCCESS != err)
-        {
-            LogError("Error: clReleaseContext returned '%s'.\n", TranslateOpenCLError(err));
-        }
-    }
-
-    /*
-     * Note there is no procedure to deallocate platform 
-     * because it was not created at the startup,
-     * but just queried from OpenCL runtime.
-     */
-}
-
-mOpenCL ocl;
-
-/*
+/* 这些都是默认自带的函数
  * Check whether an OpenCL platform is the required platform
  * (based on the platform's name)
  */
@@ -218,7 +70,7 @@ bool CheckPreferredPlatformMatch(cl_platform_id platform, const char* preferredP
     return match;
 }
 
-/*
+/* 这些都是默认自带的函数
  * Find and return the preferred OpenCL platform
  * In case that preferredPlatform is NULL, the ID of the first discovered platform will be returned
  */
@@ -295,7 +147,7 @@ cl_platform_id FindOpenCLPlatform(const char* preferredPlatform, cl_device_type 
 }
 
 
-/*
+/* 这些都是默认自带的函数
  * This function read the OpenCL platdorm and device versions
  * (using clGetxxxInfo API) and stores it in the ocl structure.
  * Later it will enable us to support both OpenCL 1.2 and 2.0 platforms and devices
@@ -387,7 +239,7 @@ int GetPlatformAndDeviceVersion (cl_platform_id platformId, mOpenCL *ocl)
 }
 
 
-/*
+/* 这些都是默认自带的函数
  * This function picks/creates necessary OpenCL objects which are needed.
  * The objects are:
  * OpenCL platform, device, context, and command queue.
@@ -468,7 +320,7 @@ int SetupOpenCL(mOpenCL *ocl, cl_device_type deviceType)
 
 
 /* 
- * Create and build OpenCL program from its source code
+ * 从cl代码中创建cl的program
  */
 int CreateAndBuildProgram(mOpenCL *ocl)
 {
@@ -536,6 +388,7 @@ Finish:
 int CreateBufferArguments(mOpenCL *ocl)
 {
     cl_int err = CL_SUCCESS;
+    // 创建buffer,将cpu的内存映射到gpu中，但这里使用的是use-host-ptr模型，没有进行内存的拷贝
     ocl->tx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &tx, &err);
     ocl->ty = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &ty, &err); 
     ocl->tz = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &tz, &err);
@@ -568,6 +421,7 @@ cl_uint SetKernelArguments(mOpenCL *ocl)
 {
     // CL_SUCCESS is 0, so sum all err up, if not zero, means Error.
     cl_int err = CL_SUCCESS;
+    // 设置kernel的参数
     err += clSetKernelArg(ocl->updateSphere, 0, sizeof(cl_mem), &ocl->tx);
     err += clSetKernelArg(ocl->updateSphere, 1, sizeof(cl_mem), &ocl->ty);
     err += clSetKernelArg(ocl->updateSphere, 2, sizeof(cl_mem), &ocl->tz);
@@ -627,14 +481,14 @@ bool ReadAndVerify(mOpenCL *ocl)
     cl_int err = CL_SUCCESS;
     bool result = true;
     // read from a buffer object to host memory(tx, ty, tz, etc)
-    cout << "t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
+    //cout << "t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->ntx, CL_TRUE, 0, sizeof(float) * num, tx, 0, NULL, NULL);
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nty, CL_TRUE, 0, sizeof(float) * num, ty, 0, NULL, NULL);
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->ntz, CL_TRUE, 0, sizeof(float) * num, tz, 0, NULL, NULL);
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvx, CL_TRUE, 0, sizeof(float) * num, vx, 0, NULL, NULL);
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvy, CL_TRUE, 0, sizeof(float) * num, vy, 0, NULL, NULL);
     err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvz, CL_TRUE, 0, sizeof(float) * num, vz, 0, NULL, NULL);
-    cout << "After t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
+    // cout << "After t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
 
     if (CL_SUCCESS != err)
     {
@@ -653,7 +507,7 @@ bool ReadAndVerify(mOpenCL *ocl)
 
 
 
-void myReshape(GLsizei w, GLsizei h)//设定窗口大小变化的回调函数
+void reshapeWindow(GLsizei w, GLsizei h)//设定窗口大小变化的回调函数
 {
     glViewport(0, 0, w, h);
     glMatrixMode(GL_PROJECTION);
@@ -662,6 +516,7 @@ void myReshape(GLsizei w, GLsizei h)//设定窗口大小变化的回调函数
 }
 
 void drawSolidCube(GLfloat x, GLfloat y, GLfloat z, GLfloat xl, GLfloat yl, GLfloat zl, GLubyte red, GLubyte green, GLubyte blue) {
+    // 画面
     glPushMatrix();
     glColor3ub(red, green, blue);
     glTranslatef(x, y, z);
@@ -671,6 +526,7 @@ void drawSolidCube(GLfloat x, GLfloat y, GLfloat z, GLfloat xl, GLfloat yl, GLfl
 }
 
 void drawSphere(GLfloat x, GLfloat y, GLfloat z, GLfloat r, GLubyte red, GLubyte green, GLubyte blue) {
+    // 画球
     glPushMatrix();
     glColor3ub(red, green, blue);
     glTranslatef(x, y, z);
@@ -729,16 +585,7 @@ void initSpheres(void)
 
 
 void updateSpheres() {
-    // Regularly you wish to use OpenCL in your application to achieve greater performance results
-    // that are hard to achieve in other ways.
-    // To understand those performance benefits you may want to measure time your application spent in OpenCL kernel execution.
-    // The recommended way to obtain this time is to measure interval between two moments:
-    //   - just before clEnqueueNDRangeKernel is called, and
-    //   - just after clFinish is called
-    // clFinish is necessary to measure entire time spending in the kernel, measuring just clEnqueueNDRangeKernel is not enough,
-    // because this call doesn't guarantees that kernel is finished.
-    // clEnqueueNDRangeKernel is just enqueue new command in OpenCL command queue and doesn't wait until it ends.
-    // clFinish waits until all commands in command queue are finished, that suits your need to measure time.
+    // 调用kernel函数更新
     ExecuteUpdateSphereKernel(&ocl);
     // The last part of this function: getting processed results back.
     ReadAndVerify(&ocl);
@@ -807,7 +654,15 @@ int _tmain(int argc, TCHAR* argv[])
     {
         return -1;
     }
-
+    // 以下为测试代码：
+    //clock_t start, end;
+    //start = clock(); 
+    //for (int i = 0; i < 10000; i++) {
+    //    if (i % 1000 == 0) cout << "CLProgress: " << i << "/10000" << endl;
+    //    updateSpheres();
+    //}
+    //end = clock();   //结束时间
+    //cout << "time = " << double(end - start) / CLOCKS_PER_SEC << "s" << endl;
     // Begin opengl to show the spheres and their collisions
     char** _argv = NULL;
     glutInit(&argc, _argv);
@@ -822,11 +677,11 @@ int _tmain(int argc, TCHAR* argv[])
 
     glutTimerFunc(GAP_TIME, timer, 1);
     //设定窗口大小变化的回调函数
-    glutReshapeFunc(myReshape);
+    glutReshapeFunc(reshapeWindow);
     //开始OPENGL的循环
     glutDisplayFunc(display);
     glutMainLoop();
-    return 0;
+        return 0;
 }
 
 
