@@ -18,6 +18,7 @@
 const int N = ARRAY_SIZE;
 const int num = N;
 const int line = 5;
+#define GAP_TIME 10
 
 const double G = -0.0003;
 const int COLOR = 51;

@@ -189,6 +189,7 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="config.h" />
     <ClInclude Include="GPUOpenCLProjectforWindows.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>

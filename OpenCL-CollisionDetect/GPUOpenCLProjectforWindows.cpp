@@ -20,6 +20,7 @@ using namespace std;
 //const GLfloat Pi = 3.1415926536f;
 
 float tx[N], ty[N], tz[N], r[N], vx[N], vy[N], vz[N], m[N], red[N], green[N], blue[N]; 
+float ntx[N], nty[N], ntz[N],nvx[N], nvy[N], nvz[N];
 
 
 /* Convenient container for all OpenCL specific objects used in the sample
@@ -56,6 +57,14 @@ struct mOpenCL
     cl_mem           vy;
     cl_mem           vz;
     cl_mem           m;
+
+    cl_mem           ntx;
+    cl_mem           nty;
+    cl_mem           ntz;
+    cl_mem           nvx;
+    cl_mem           nvy;
+    cl_mem           nvz;
+
     size_t           num;
 };
 
@@ -71,6 +80,7 @@ mOpenCL::mOpenCL():
 {
     tx = ty = tz = r = m = vx = vy = vz = NULL;
     num = 125;
+    ntx = nty = ntz = nvx = nvy = nvz = NULL;
 }
 
 /*
@@ -519,7 +529,6 @@ Finish:
     return err;
 }
 
-
 /*
  * Create OpenCL buffers from host memory
  * These buffers will be used later by the OpenCL kernel
@@ -528,13 +537,20 @@ int CreateBufferArguments(mOpenCL *ocl)
 {
     cl_int err = CL_SUCCESS;
     ocl->tx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &tx, &err);
-    ocl->ty = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &ty, &err); ocl->tx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &tx, &err);
+    ocl->ty = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &ty, &err); 
     ocl->tz = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &tz, &err);
     ocl->vx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &vx, &err);
     ocl->vy = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &vy, &err);
     ocl->vz = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &vz, &err);
     ocl->r = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &r, &err);
     ocl->m = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &m, &err);
+    ocl->ntx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &ntx, &err);
+    ocl->nty = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &nty, &err);
+    ocl->ntz = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &ntz, &err);
+    ocl->nvx = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &nvx, &err);
+    ocl->nvy = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &nvy, &err);
+    ocl->nvz = clCreateBuffer(ocl->context, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, ARRAY_SIZE * sizeof(float), &nvz, &err);
+    
     // Create first image based on host memory inputA
     if (CL_SUCCESS != err)
     {
@@ -561,6 +577,13 @@ cl_uint SetKernelArguments(mOpenCL *ocl)
     err += clSetKernelArg(ocl->updateSphere, 6, sizeof(cl_mem), &ocl->r);
     err += clSetKernelArg(ocl->updateSphere, 7, sizeof(cl_mem), &ocl->m);
 
+    err += clSetKernelArg(ocl->updateSphere, 8, sizeof(cl_mem), &ocl->ntx);
+    err += clSetKernelArg(ocl->updateSphere, 9, sizeof(cl_mem), &ocl->nty);
+    err += clSetKernelArg(ocl->updateSphere, 10, sizeof(cl_mem), &ocl->ntz);
+    err += clSetKernelArg(ocl->updateSphere, 11, sizeof(cl_mem), &ocl->nvx);
+    err += clSetKernelArg(ocl->updateSphere, 12, sizeof(cl_mem), &ocl->nvy);
+    err += clSetKernelArg(ocl->updateSphere, 13, sizeof(cl_mem), &ocl->nvz);
+    err += clSetKernelArg(ocl->updateSphere, 14, sizeof(int), &num);
     if (CL_SUCCESS != err)
     {
         LogError("error: Failed to set argument, returned %s\n", TranslateOpenCLError(err));
@@ -604,7 +627,15 @@ bool ReadAndVerify(mOpenCL *ocl)
     cl_int err = CL_SUCCESS;
     bool result = true;
     // read from a buffer object to host memory(tx, ty, tz, etc)
-    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->tx, CL_TRUE, 0, sizeof(tx), tx, 0, NULL, NULL);
+    cout << "t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->ntx, CL_TRUE, 0, sizeof(float) * num, tx, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nty, CL_TRUE, 0, sizeof(float) * num, ty, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->ntz, CL_TRUE, 0, sizeof(float) * num, tz, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvx, CL_TRUE, 0, sizeof(float) * num, vx, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvy, CL_TRUE, 0, sizeof(float) * num, vy, 0, NULL, NULL);
+    err = clEnqueueReadBuffer(ocl->commandQueue, ocl->nvz, CL_TRUE, 0, sizeof(float) * num, vz, 0, NULL, NULL);
+    cout << "After t:(" << tx[10] << "," << ty[10] << "," << tz[10] << ")" << " v:(" << vx[10] << "," << vy[10] << "," << vz[10] << ")" << endl;
+
     if (CL_SUCCESS != err)
     {
         LogError("Error: clEnqueueMapBuffer returned %s\n", TranslateOpenCLError(err));
@@ -621,12 +652,6 @@ bool ReadAndVerify(mOpenCL *ocl)
 }
 
 
-void timer(int id) {
-    //重新计算速度位置
-    updateSpheres();
-    glutPostRedisplay();
-    glutTimerFunc(10, timer, 1);
-}
 
 void myReshape(GLsizei w, GLsizei h)//设定窗口大小变化的回调函数
 {
@@ -687,25 +712,43 @@ void initSpheres(void)
         int y_i = index % line;
         index = index / line;
         int z_i = index;
-        tx[i] = x_i * 0.3 - 0.001 * y_i - 0.001 * z_i - 0.61;
-        ty[i] = y_i * 0.3 - 0.001 * z_i - 0.001 * x_i - 0.61;
-        tz[i] = z_i * 0.3 - 0.001 * x_i - 0.001 * y_i - 0.61;
+        tx[i] = ntx[i] = x_i * 0.3 - 0.001 * y_i - 0.001 * z_i - 0.61;
+        ty[i] = nty[i] = y_i * 0.3 - 0.001 * z_i - 0.001 * x_i - 0.61;
+        tz[i] = ntz[i] = z_i * 0.3 - 0.001 * x_i - 0.001 * y_i - 0.61;
         r[i] = i % 7 == 0 ? 0.15 : 0.1;
         m[i] = i % 5 == 0 ? 2 : 1;
         red[i] = (i * COLOR) % 255;
         green[i] = ((i + 1) * COLOR) % 255;
         blue[i] = ((i + 2) * COLOR) % 255;
         if (i % 11 == 0) {
-            vx[i] = 0.003; vy[i] = -0.01; vz[i] = 0.002;
+            vx[i] = nvx[i] = 0.003; vy[i] = nvy[i] = -0.01; vz[i] = nvz[i] = 0.002;
         }
-        else vx[i] = vy[i] = vz[i] = 0;
+        else vx[i] = vy[i] = vz[i] = nvx[i] = nvy[i] = nvz[i] = 0;
     };
 }
 
 
 void updateSpheres() {
+    // Regularly you wish to use OpenCL in your application to achieve greater performance results
+    // that are hard to achieve in other ways.
+    // To understand those performance benefits you may want to measure time your application spent in OpenCL kernel execution.
+    // The recommended way to obtain this time is to measure interval between two moments:
+    //   - just before clEnqueueNDRangeKernel is called, and
+    //   - just after clFinish is called
+    // clFinish is necessary to measure entire time spending in the kernel, measuring just clEnqueueNDRangeKernel is not enough,
+    // because this call doesn't guarantees that kernel is finished.
+    // clEnqueueNDRangeKernel is just enqueue new command in OpenCL command queue and doesn't wait until it ends.
+    // clFinish waits until all commands in command queue are finished, that suits your need to measure time.
     ExecuteUpdateSphereKernel(&ocl);
+    // The last part of this function: getting processed results back.
     ReadAndVerify(&ocl);
+}
+
+void timer(int id) {
+    //重新计算速度位置
+    updateSpheres();
+    glutPostRedisplay();
+    glutTimerFunc(GAP_TIME, timer, 1);
 }
 
 /*
@@ -717,6 +760,8 @@ void updateSpheres() {
  */
 int _tmain(int argc, TCHAR* argv[])
 {
+
+    initSpheres();
     cl_int err;
     cl_device_type deviceType = CL_DEVICE_TYPE_GPU;
     LARGE_INTEGER perfFrequency;
@@ -763,31 +808,7 @@ int _tmain(int argc, TCHAR* argv[])
         return -1;
     }
 
-    // Regularly you wish to use OpenCL in your application to achieve greater performance results
-    // that are hard to achieve in other ways.
-    // To understand those performance benefits you may want to measure time your application spent in OpenCL kernel execution.
-    // The recommended way to obtain this time is to measure interval between two moments:
-    //   - just before clEnqueueNDRangeKernel is called, and
-    //   - just after clFinish is called
-    // clFinish is necessary to measure entire time spending in the kernel, measuring just clEnqueueNDRangeKernel is not enough,
-    // because this call doesn't guarantees that kernel is finished.
-    // clEnqueueNDRangeKernel is just enqueue new command in OpenCL command queue and doesn't wait until it ends.
-    // clFinish waits until all commands in command queue are finished, that suits your need to measure time.
-    bool queueProfilingEnable = true;
-    if (queueProfilingEnable)
-        QueryPerformanceCounter(&performanceCountNDRangeStart);
-    // Execute (enqueue) the kernel
-    if (CL_SUCCESS != ExecuteUpdateSphereKernel(&ocl))
-    {
-        return -1;
-    }
-    if (queueProfilingEnable)
-        QueryPerformanceCounter(&performanceCountNDRangeStop);
-
-    // The last part of this function: getting processed results back.
-    // use map-unmap sequence to update original memory area with output buffer.
-    ReadAndVerify(&ocl);
-    // retrieve performance counter frequency
+    // Begin opengl to show the spheres and their collisions
     char** _argv = NULL;
     glutInit(&argc, _argv);
     //初始化OPENGL显示方式 
@@ -799,21 +820,12 @@ int _tmain(int argc, TCHAR* argv[])
     glutCreateWindow("opengl3d");
     glEnable(GL_DEPTH_TEST);
 
-    initSpheres();
-    glutTimerFunc(10, timer, 1);
+    glutTimerFunc(GAP_TIME, timer, 1);
     //设定窗口大小变化的回调函数
     glutReshapeFunc(myReshape);
     //开始OPENGL的循环
     glutDisplayFunc(display);
     glutMainLoop();
-
-
-    if (queueProfilingEnable)
-    {
-        QueryPerformanceFrequency(&perfFrequency);
-        LogInfo("NDRange performance counter time %f ms.\n",
-            1000.0f*(float)(performanceCountNDRangeStop.QuadPart - performanceCountNDRangeStart.QuadPart) / (float)perfFrequency.QuadPart);
-    }
     return 0;
 }
 
